@@ -1,7 +1,6 @@
 const express = require("express")
 const fs = require("fs")
 const { createProxyMiddleware } = require("http-proxy-middleware")
-const path = require("path")
 
 const proxy = express()
 const PORT = process.env.PORT || 3000
@@ -36,10 +35,19 @@ const proxyOptions = {
 		proxyReq.setHeader('X-Permission', permissions)
 	},
 	onProxyRes: async (proxyRes, req, res) => {
-		res.setHeader('X-Permission', req.locals.data);
-		proxyRes.pipe(res);
+		res.setHeader('X-Permission', req.locals.data)
+		proxyRes.pipe(res)
 	}
 }
+
+proxy.get('/request-info', (req, res) => {
+    res.send({
+		"url": req.url,
+		"body": req.body,
+		"headers": req.headers,
+		"parameters": req.parameters
+	});
+});
 
 proxy.use("/proxytest", preAuthenticator, createProxyMiddleware(proxyOptions))
 
