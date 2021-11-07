@@ -1,5 +1,4 @@
 const express = require("express")
-const morgan = require("morgan")
 const fs = require("fs")
 const { createProxyMiddleware } = require("http-proxy-middleware")
 const path = require("path")
@@ -16,25 +15,13 @@ express.static.mime.define({'application/json': ['info']});
 proxy.use(express.static("static"))
 proxy.use(express.static("file-content"))
 
-proxy.on('proxyRes', function onProxyRes(proxyRes, req, res) {
-	proxyRes.headers['x-added'] = 'foobar'
-	delete proxyRes.headers['X-Powered-By', 'X-Test']
-})
-
 const preAuthenticator = async (req, res, next) => {
 	const result = await new Promise((resolve, reject) => {
-	//   setTimeout(() => {
-	// 	resolve({ data: 
-	// 		JSON.parse(fs.readFileSync(
-	// 			"content/permissions.json").toString()).permissions })
-	//   }, 2000)  
-		resolve({ data: 
-			JSON.parse(fs.readFileSync(
+		resolve({
+			data: JSON.parse(fs.readFileSync(
 				"content/permissions.json").toString()).permissions })
 	})
-	req.locals = {
-	  da: result.data,
-	}
+	req.locals = { data: result.data }
 	next()
 }  
 
@@ -44,20 +31,14 @@ const proxyOptions = {
 	selfHandleResponse: true,
 	pathRewrite: { ["/proxytest"]: "" },
 	onProxyReq: (proxyReq, req, res) => {
-		const permissions = req.locals.da
+		const permissions = req.locals.data
 		console.log(`Successfully set permissions: ${permissions}`)
 		proxyReq.setHeader('X-Permission', permissions)
 	},
 	onProxyRes: async (proxyRes, req, res) => {
-		// const da = await new Promise((resolve, reject) => {
-		//   setTimeout(() => {
-		// 	resolve({ wei: 'wei' });
-		//   }, 200);
-		// });
-		res.setHeader('X-Permission', req.locals.da);
+		res.setHeader('X-Permission', req.locals.data);
 		proxyRes.pipe(res);
-	},
-	
+	}
 }
 
 proxy.use("/proxytest", preAuthenticator, createProxyMiddleware(proxyOptions))
