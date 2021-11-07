@@ -1,5 +1,5 @@
 ```
-$ curl -s localhost:3000/proxytest/request-info | jq . 
+$ curl -s localhost:3000/request-info | jq . 
 {
   "url": "/request-info",
   "headers": {
