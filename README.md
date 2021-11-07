@@ -1,3 +1,6 @@
+# An HTTP proxy implemented in nodejs using http-proxy-middleware
+
+## Example calls
 ```
 $ curl -s localhost:3000/request-info | jq . 
 {
@@ -8,7 +11,6 @@ $ curl -s localhost:3000/request-info | jq .
     "accept": "*/*"
   }
 }
-```
 
 $ curl -s localhost:3000/proxytest/request-info | jq . 
 {
