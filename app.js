@@ -1,31 +1,67 @@
 const express = require("express")
-const morgan = require("morgan");
-const fs = require("fs");
-const { createProxyMiddleware } = require("http-proxy-middleware");
-const path = require("path");
+const morgan = require("morgan")
+const fs = require("fs")
+const { createProxyMiddleware } = require("http-proxy-middleware")
+const path = require("path")
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-const HOST = "0.0.0.0";
+const proxy = express()
+const PORT = process.env.PORT || 3000
+const HOST = "0.0.0.0"
 
-const APIT_SERVICE_URL = PORT==3000? "http://localhost:8000/":
-    "http://api-service.net128.com/"
+const API_SERVICE_URL = PORT == 3000 ? `http://localhost:${PORT}/` :
+	"http://api-service.net128.com/"
 
-app.use(express.static(path.join(path.resolve(), "static")));
+proxy.disable('x-powered-by')
+express.static.mime.define({'application/json': ['info']});
+proxy.use(express.static("static"))
+proxy.use(express.static("file-content"))
 
-app.use("", (req,res,next) => {
-    res.append("X-Test", "test");
-    next();
-});
+proxy.on('proxyRes', function onProxyRes(proxyRes, req, res) {
+	proxyRes.headers['x-added'] = 'foobar'
+	delete proxyRes.headers['X-Powered-By', 'X-Test']
+})
 
-app.use("/proxytest",createProxyMiddleware({
-    target: APIT_SERVICE_URL,
-    changeOrigin: true,
-    pathRewrite: {
-        ["/proxytest"]: "",
-    }
-}));
+const preAuthenticator = async (req, res, next) => {
+	const result = await new Promise((resolve, reject) => {
+	//   setTimeout(() => {
+	// 	resolve({ data: 
+	// 		JSON.parse(fs.readFileSync(
+	// 			"content/permissions.json").toString()).permissions })
+	//   }, 2000)  
+		resolve({ data: 
+			JSON.parse(fs.readFileSync(
+				"content/permissions.json").toString()).permissions })
+	})
+	req.locals = {
+	  da: result.data,
+	}
+	next()
+}  
 
-app.listen(PORT, HOST, () => {
-    console.log(`Proxy is listening on ${HOST}:${PORT}`);
+const proxyOptions = {
+	target: API_SERVICE_URL,
+	changeOrigin: true,
+	selfHandleResponse: true,
+	pathRewrite: { ["/proxytest"]: "" },
+	onProxyReq: (proxyReq, req, res) => {
+		const permissions = req.locals.da
+		console.log(`Successfully set permissions: ${permissions}`)
+		proxyReq.setHeader('X-Permission', permissions)
+	},
+	onProxyRes: async (proxyRes, req, res) => {
+		// const da = await new Promise((resolve, reject) => {
+		//   setTimeout(() => {
+		// 	resolve({ wei: 'wei' });
+		//   }, 200);
+		// });
+		res.setHeader('X-Permission', req.locals.da);
+		proxyRes.pipe(res);
+	},
+	
+}
+
+proxy.use("/proxytest", preAuthenticator, createProxyMiddleware(proxyOptions))
+
+proxy.listen(PORT, HOST, () => {
+	console.log(`Proxy is listening on ${HOST}:${PORT}`)
 })
