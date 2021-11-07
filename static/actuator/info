@@ -1,0 +1,6 @@
+{
+  "app": {
+    "version": "1.0.0",
+    "name": "nodejs-proxy"
+  }
+}
