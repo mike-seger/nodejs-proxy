@@ -16,11 +16,16 @@ proxy.use(express.static("file-content"))
 
 const preAuthenticator = async (req, res, next) => {
 	const result = await new Promise((resolve, reject) => {
-		resolve({
-			data: JSON.parse(fs.readFileSync(
-				"content/permissions.json").toString()).permissions })
-	})
-	req.locals = { data: result.data }
+		const data = null
+		const file="content/permissions.json"
+		try { JSON.parse(fs.readFileSync(file).toString()).permissions }
+		catch(error) { console.log(error) }
+		if(data!=null) resolve( { data: data })
+		else reject(`Error occurred reding ${file}`)
+	}).catch((error) => { 
+		console.log(error);
+	});
+	req.locals = { data: result?result.data:null }
 	next()
 }  
 
@@ -31,6 +36,10 @@ const proxyOptions = {
 	pathRewrite: { ["/proxytest"]: "" },
 	onProxyReq: (proxyReq, req, res) => {
 		const permissions = req.locals.data
+		if(!permissions) {
+			res.status(500).send()
+			return
+		}
 		console.log(`Successfully set permissions: ${permissions}`)
 		proxyReq.setHeader('X-Permission', permissions)
 	},
